@@ -24,9 +24,13 @@ function addLink(maze, cellA, cellB) {
  * Generate a random maze of given dimensions
  * @param {number} width - Number of columns
  * @param {number} height - Number of rows
+ * @param {object} options - Options object
+ * @param {boolean} options.talk - Whether to print progress messages
  * @returns {object} Complete maze object
  */
-function generateRandomMaze(width, height) {
+function generateRandomMaze(width, height, options = {}) {
+  const { talk = false } = options;
+  
   // Initialize maze with all cells and no links
   const maze = {
     width,
@@ -44,9 +48,13 @@ function generateRandomMaze(width, height) {
     }
   }
   
-  // Iteratively add links until maze is connected
+  // Get initial boundary count for progress calculation
   let analysis = analyzeMaze(maze);
+  const totalBoundaries = analysis.boundaries.length;
+  const startTime = Date.now();
+  let lastPrint = 0;
   
+  // Iteratively add links until maze is connected
   while (analysis.boundaries.length > 0) {
     // Pick a random boundary from the analysis
     const randomIndex = Math.floor(Math.random() * analysis.boundaries.length);
@@ -60,6 +68,22 @@ function generateRandomMaze(width, height) {
     
     // Re-analyze
     analysis = analyzeMaze(maze);
+    
+    // Print progress if talk is enabled (throttled to once per second)
+    if (talk) {
+      const now = Date.now();
+      if (!lastPrint || now - lastPrint >= 1000 || analysis.boundaries.length === 0) {
+        const remaining = analysis.boundaries.length;
+        const percentComplete = ((totalBoundaries - remaining) / totalBoundaries * 100).toFixed(1);
+        const elapsed = now - startTime;
+        const rate = (totalBoundaries - remaining) / elapsed; // links per ms
+        const remainingMs = remaining / rate;
+        const estimatedEnd = new Date(now + remainingMs);
+        
+        console.log(`${percentComplete}% complete | ${remaining} boundaries remaining | ETA: ${estimatedEnd.toLocaleTimeString()}`);
+        lastPrint = now;
+      }
+    }
   }
   
   return maze;
@@ -85,7 +109,7 @@ if (require.main === module) {
   }
   
   // Generate the maze
-  const maze = generateRandomMaze(width, height);
+  const maze = generateRandomMaze(width, height, { talk: true });
   
   // Resolve output path
   const resolvedPath = path.resolve(outputPath);
