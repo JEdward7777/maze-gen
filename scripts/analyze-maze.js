@@ -10,11 +10,14 @@ const path = require('path');
 
 /**
  * Analyze a maze and return disconnected spaces
- * @param {string} mazePath - Path to the maze JSON file
+ * @param {string|object} mazeInput - Path to the maze JSON file or maze object
  * @returns {object} Analysis result with spaces
  */
-function analyzeMaze(mazePath) {
-  const maze = JSON.parse(fs.readFileSync(mazePath, 'utf8'));
+function analyzeMaze(mazeInput) {
+  // Load maze from file if string path provided
+  const maze = typeof mazeInput === 'string' 
+    ? JSON.parse(fs.readFileSync(mazeInput, 'utf8')) 
+    : mazeInput;
 
   const leader = {};
 
