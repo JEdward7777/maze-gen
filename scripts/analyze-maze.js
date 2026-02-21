@@ -31,8 +31,7 @@ function analyzeMaze(mazePath) {
   }
 
 
-
-      // Add edges from links (bidirectional)
+  // Add edges from links (bidirectional)
   Object.keys(maze.links).forEach(link => {
     const [cell1, cell2] = link.split('-');
     connect_cells(cell1, cell2);
@@ -50,9 +49,27 @@ function analyzeMaze(mazePath) {
     dict_groups[cell_leader].push(cell);
   });
 
+  //Now determine the boundaries between the groups.
+  const boundaries = [];
+  for( const cell of Object.keys(maze.cells) ){
+    const [x, y] = cell.split(',');
+    const down = `${x},${parseInt(y)+1}`;
+    const right = `${parseInt(x)+1},${y}`;
+    const neighbors = [down, right];
+    const cell_leader = get_leader(cell);
+
+    // Check if any neighbor is in a different group
+    neighbors.forEach(neighbor => {
+      if (maze.cells[neighbor] && get_leader(neighbor) !== cell_leader) {
+        boundaries.push(`${cell}-${neighbor}`);
+      }
+    });
+  }
+
   // Return result
   return {
-    groups: Object.values(dict_groups)
+    groups: Object.values(dict_groups),
+    boundaries: boundaries
   };
 }
 
