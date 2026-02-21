@@ -44,8 +44,6 @@
   <h1>Maze Renderer</h1>
   <select id="mazeSelect" style="display: block; margin: 0 auto 20px; padding: 10px; font-size: 16px;">
     <option value="">-- Select a maze --</option>
-    <option value="mazes/grid.json">Grid Maze</option>
-    <option value="mazes/plus.json">Plus Maze</option>
   </select>
   <div style="display: flex; justify-content: center; min-height: 400px; align-items: flex-start;">
     <canvas id="mazeCanvas"></canvas>
@@ -253,6 +251,31 @@
     const canvas = document.getElementById('mazeCanvas');
     const mazeSelect = document.getElementById('mazeSelect');
     
+    // Load list of available mazes from API
+    async function loadMazeList() {
+      try {
+        const response = await fetch('/api/mazes');
+        const data = await response.json();
+        
+        // Populate dropdown with available mazes
+        data.mazes.forEach(maze => {
+          const option = document.createElement('option');
+          option.value = maze.path;
+          // Convert filename to readable name (e.g., "grid.json" -> "Grid")
+          option.textContent = maze.name.charAt(0).toUpperCase() + maze.name.slice(1);
+          mazeSelect.appendChild(option);
+        });
+        
+        // Auto-select the first maze
+        if (mazeSelect.options.length > 1) {
+          mazeSelect.selectedIndex = 1;
+          mazeSelect.dispatchEvent(new Event('change'));
+        }
+      } catch (error) {
+        console.error('Error loading maze list:', error);
+      }
+    }
+    
     // Load maze from JSON file when dropdown changes
     mazeSelect.addEventListener('change', async function() {
       const mazeFile = this.value;
@@ -267,9 +290,8 @@
       }
     });
     
-    // Auto-select the first maze
-    mazeSelect.value = 'mazes/grid.json';
-    mazeSelect.dispatchEvent(new Event('change'));
+    // Initialize - load maze list
+    loadMazeList();
   </script>
 </body>
 </html>
