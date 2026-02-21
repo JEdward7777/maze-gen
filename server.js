@@ -8,6 +8,11 @@ const PORT = process.env.PORT || 8888;
 // Serve static files from current directory
 app.use(express.static('.'));
 
+// Serve index.html for root path
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'maze.html'));
+});
+
 // API: Get list of available mazes
 app.get('/api/mazes', (req, res) => {
   const mazesDir = path.join(__dirname, 'mazes');
