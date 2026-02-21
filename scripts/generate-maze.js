@@ -10,47 +10,6 @@ const path = require('path');
 const analyzeMaze = require('./analyze-maze');
 
 /**
- * Get all potential neighbors (boundaries) between different groups
- * @param {object} maze - The maze object
- * @returns {array} Array of neighbor pairs [cellA, cellB]
- */
-function getBoundaries(maze) {
-  const boundaries = [];
-  const { width, height, cells, links } = maze;
-  
-  // Convert cells to a set for fast lookup
-  const cellSet = new Set(Object.keys(cells));
-  
-  // Check each cell for valid neighbors
-  Object.keys(cells).forEach(cell => {
-    const [x, y] = cell.split(',').map(Number);
-    
-    // Check right and bottom neighbors only (to avoid duplicates)
-    const neighbors = [
-      [x + 1, y],  // right
-      [x, y + 1]  // bottom
-    ];
-    
-    neighbors.forEach(([nx, ny]) => {
-      const neighborKey = `${nx},${ny}`;
-      
-      // Skip if neighbor doesn't exist in cells
-      if (!cellSet.has(neighborKey)) return;
-      
-      // Check if link already exists
-      const linkKey1 = `${cell}-${neighborKey}`;
-      const linkKey2 = `${neighborKey}-${cell}`;
-      
-      if (links[linkKey1] || links[linkKey2]) return;
-      
-      boundaries.push([cell, neighborKey]);
-    });
-  });
-  
-  return boundaries;
-}
-
-/**
  * Add a single link to the maze
  * @param {object} maze - The maze object (mutated)
  * @param {string} cellA - First cell coordinates "x,y"
@@ -88,18 +47,13 @@ function generateRandomMaze(width, height) {
   // Iteratively add links until maze is connected
   let analysis = analyzeMaze(maze);
   
-  while (analysis.groups.length > 1) {
-    // Get all possible boundaries between different groups
-    const boundaries = getBoundaries(maze);
+  while (analysis.boundaries.length > 0) {
+    // Pick a random boundary from the analysis
+    const randomIndex = Math.floor(Math.random() * analysis.boundaries.length);
+    const boundary = analysis.boundaries[randomIndex];
     
-    if (boundaries.length === 0) {
-      // No more boundaries but still not connected - shouldn't happen
-      break;
-    }
-    
-    // Pick a random boundary
-    const randomIndex = Math.floor(Math.random() * boundaries.length);
-    const [cellA, cellB] = boundaries[randomIndex];
+    // Parse the boundary (format: "cellA-cellB")
+    const [cellA, cellB] = boundary.split('-');
     
     // Add the link
     addLink(maze, cellA, cellB);
@@ -147,4 +101,4 @@ if (require.main === module) {
   console.log(`Maze saved to: ${resolvedPath}`);
 }
 
-module.exports = { generateRandomMaze, addLink, getBoundaries };
+module.exports = { generateRandomMaze, addLink };
