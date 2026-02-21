@@ -211,12 +211,31 @@ if (require.main === module) {
   
   if (args.length < 1) {
     console.error('Usage: node scripts/render-maze-svg.js <maze-file> [output-file]');
-    console.error('Example: node scripts/render-maze-svg.js mazes/grid.json mazes/grid.svg');
+    console.error('Options:');
+    console.error('  --solution, -s      Include solution path');
+    console.error('  --cell-size=N        Cell size in pixels (default: 20)');
+    console.error('');
+    console.error('Example: node scripts/render-maze-svg.js mazes/grid.json mazes/grid.svg --solution');
     process.exit(1);
   }
   
-  const mazePath = args[0];
-  const outputPath = args[1];
+  // Parse options
+  const options = {};
+  const otherArgs = [];
+  
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--solution' || arg === '-s') {
+      options.showSolution = true;
+    } else if (arg.startsWith('--cell-size=')) {
+      options.cellSize = parseInt(arg.split('=')[1], 10);
+    } else if (!arg.startsWith('-')) {
+      otherArgs.push(arg);
+    }
+  }
+  
+  const mazePath = otherArgs[0];
+  const outputPath = otherArgs[1];
   
   const mazePathResolved = path.resolve(mazePath);
   if (!fs.existsSync(mazePathResolved)) {
@@ -224,7 +243,7 @@ if (require.main === module) {
     process.exit(1);
   }
   
-  renderMazeFileToSVG(mazePathResolved, outputPath);
+  renderMazeFileToSVG(mazePathResolved, outputPath, options);
 }
 
 module.exports = { renderMazeToSVG, renderMazeFileToSVG };
