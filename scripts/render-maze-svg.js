@@ -3,11 +3,14 @@
 /**
  * Render a maze to SVG
  * Usage: node scripts/render-maze-svg.js <maze-file> [output-file]
- * If no output file, prints to stdout
+ * Options:
+ *   --solution, -s    Include solution path
+ *   --cell-size=N     Set cell size (default: 20)
  */
 
 const fs = require('fs');
 const path = require('path');
+const { solveMaze } = require('./analyze-maze');
 
 /**
  * Render a maze to SVG string
@@ -15,6 +18,8 @@ const path = require('path');
  * @param {object} options - Rendering options
  * @param {number} options.cellSize - Size of each cell in pixels (default: 20)
  * @param {number} options.lineWidth - Width of walls in pixels (default: 2)
+ * @param {boolean} options.showSolution - Whether to show the solution path (default: false)
+ * @param {string} options.solutionColor - Color of solution path (default: #2196F3)
  * @returns {string} SVG string
  */
 function renderMazeToSVG(maze, options = {}) {
@@ -24,7 +29,9 @@ function renderMazeToSVG(maze, options = {}) {
     startColor = '#4CAF50',
     endColor = '#F44336',
     wallColor = '#333333',
-    backgroundColor = '#FFFFFF'
+    backgroundColor = '#FFFFFF',
+    showSolution = false,
+    solutionColor = '#2196F3'
   } = options;
 
   const { width, height, cells, links, start, end } = maze;
@@ -120,6 +127,37 @@ function renderMazeToSVG(maze, options = {}) {
   walls.forEach(wall => {
     svg += `  <line x1="${wall.x1}" y1="${wall.y1}" x2="${wall.x2}" y2="${wall.y2}" stroke="${wallColor}" stroke-width="${lineWidth}" stroke-linecap="square"/>\n`;
   });
+  
+  // Add solution path if requested
+  if (showSolution) {
+    const solution = solveMaze(maze);
+    if (solution.solved && solution.path.length > 1) {
+      svg += `\n  <!-- Solution Path -->\n`;
+      
+      // Draw lines connecting path cells
+      for (let i = 0; i < solution.path.length - 1; i++) {
+        const [x1, y1] = solution.path[i].split(',').map(Number);
+        const [x2, y2] = solution.path[i + 1].split(',').map(Number);
+        
+        const cx1 = x1 * cellSize + cellSize / 2;
+        const cy1 = y1 * cellSize + cellSize / 2;
+        const cx2 = x2 * cellSize + cellSize / 2;
+        const cy2 = y2 * cellSize + cellSize / 2;
+        
+        svg += `  <line x1="${cx1}" y1="${cy1}" x2="${cx2}" y2="${cy2}" stroke="${solutionColor}" stroke-width="${cellSize / 4}" stroke-linecap="round"/>\n`;
+      }
+      
+      // Add dots at each cell in the path
+      solution.path.forEach((cell, i) => {
+        const [x, y] = cell.split(',').map(Number);
+        const cx = x * cellSize + cellSize / 2;
+        const cy = y * cellSize + cellSize / 2;
+        const r = cellSize / 6;
+        
+        svg += `  <circle cx="${cx}" cy="${cy}" r="${r}" fill="${solutionColor}"/>\n`;
+      });
+    }
+  }
   
   // Add start marker
   if (start && cells[start]) {

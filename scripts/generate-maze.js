@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const analyzeMaze = require('./analyze-maze');
+const { analyzeMaze } = require('./analyze-maze');
 
 /**
  * Add a single link to the maze

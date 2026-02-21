@@ -76,6 +76,82 @@ function analyzeMaze(mazeInput) {
   };
 }
 
+/**
+ * Solve a maze and return the shortest path from start to end
+ * Uses BFS (Breadth-First Search) to find shortest path
+ * @param {string|object} mazeInput - Path to the maze JSON file or maze object
+ * @returns {object} Solution result with path and stats
+ */
+function solveMaze(mazeInput) {
+  // Load maze from file if string path provided
+  const maze = typeof mazeInput === 'string' 
+    ? JSON.parse(fs.readFileSync(mazeInput, 'utf8')) 
+    : mazeInput;
+
+  const { start, end, cells, links } = maze;
+  
+  // Validate start and end exist
+  if (!start || !cells[start]) {
+    return { error: 'Start cell not found in maze' };
+  }
+  if (!end || !cells[end]) {
+    return { error: 'End cell not found in maze' };
+  }
+
+  // Build adjacency list from links
+  const adjacency = new Map();
+  
+  // Initialize all cells
+  Object.keys(cells).forEach(cell => {
+    adjacency.set(cell, []);
+  });
+  
+  // Add edges from links (bidirectional)
+  Object.keys(links).forEach(link => {
+    const [cell1, cell2] = link.split('-');
+    if (adjacency.has(cell1) && adjacency.has(cell2)) {
+      adjacency.get(cell1).push(cell2);
+      adjacency.get(cell2).push(cell1);
+    }
+  });
+
+  // BFS to find shortest path
+  const visited = new Set();
+  const queue = [[start]];  // Queue of paths
+  visited.add(start);
+  
+  while (queue.length > 0) {
+    const path = queue.shift();
+    const current = path[path.length - 1];
+    
+    // Found the end
+    if (current === end) {
+      return {
+        path: path,
+        length: path.length,
+        solved: true
+      };
+    }
+    
+    // Explore neighbors
+    const neighbors = adjacency.get(current) || [];
+    for (const neighbor of neighbors) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        queue.push([...path, neighbor]);
+      }
+    }
+  }
+  
+  // No path found
+  return {
+    path: [],
+    length: 0,
+    solved: false,
+    error: 'No path from start to end'
+  };
+}
+
 // Run if executed directly
 if (require.main === module) {
   const mazeFile = process.argv[2];
@@ -94,4 +170,4 @@ if (require.main === module) {
   console.log(JSON.stringify(result, null, 2));
 }
 
-module.exports = analyzeMaze;
+module.exports = { analyzeMaze, solveMaze };
