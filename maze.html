@@ -42,7 +42,14 @@
 </head>
 <body>
   <h1>Maze Renderer</h1>
-  <canvas id="mazeCanvas"></canvas>
+  <select id="mazeSelect" style="display: block; margin: 0 auto 20px; padding: 10px; font-size: 16px;">
+    <option value="">-- Select a maze --</option>
+    <option value="mazes/grid.json">Grid Maze</option>
+    <option value="mazes/plus.json">Plus Maze</option>
+  </select>
+  <div style="display: flex; justify-content: center; min-height: 400px; align-items: flex-start;">
+    <canvas id="mazeCanvas"></canvas>
+  </div>
 
   <script>
     // === CONFIGURABLE CONSTANTS ===
@@ -53,6 +60,7 @@
     const START_COLOR = '#00ff00';
     const END_COLOR = '#ff0000';
     const OPENING_INDICATOR_COLOR = '#888888';
+    const CELL_SIZE = 50;  // Fixed cell size in pixels
 
     /**
      * Draws a maze on a canvas
@@ -73,15 +81,10 @@
       const start = mazeMap.start;
       const end = mazeMap.end;
 
-      // Calculate cell size to fit canvas width with padding
-      const canvasWidth = window.innerWidth - 40; // Account for body padding
-      const canvasHeight = window.innerHeight - 80; // Account for header and padding
-      
-      const maxCellWidth = Math.floor(canvasWidth / width);
-      const maxCellHeight = Math.floor(canvasHeight / height);
-      const cellSize = Math.min(maxCellWidth, maxCellHeight);
+      // Calculate cell size based on fixed size constant
+      const cellSize = CELL_SIZE;
 
-      // Set canvas size
+      // Set canvas size based on explicit width/height
       canvas.width = cellSize * width;
       canvas.height = cellSize * height;
 
@@ -248,26 +251,25 @@
 
     // Draw the sample maze
     const canvas = document.getElementById('mazeCanvas');
-    drawMaze(canvas, sampleMaze);
+    const mazeSelect = document.getElementById('mazeSelect');
     
-    // Log debug info
-    console.log('Canvas width:', canvas.width);
-    console.log('Canvas height:', canvas.height);
-    
-    // Add a button to switch between mazes
-    const btn = document.createElement('button');
-    btn.textContent = 'Switch to Plus Maze';
-    btn.style.cssText = 'display: block; margin: 20px auto; padding: 10px 20px; font-size: 16px; cursor: pointer;';
-    btn.onclick = function() {
-      if (btn.textContent === 'Switch to Plus Maze') {
-        drawMaze(canvas, plusMaze);
-        btn.textContent = 'Switch to Grid Maze';
-      } else {
-        drawMaze(canvas, sampleMaze);
-        btn.textContent = 'Switch to Plus Maze';
+    // Load maze from JSON file when dropdown changes
+    mazeSelect.addEventListener('change', async function() {
+      const mazeFile = this.value;
+      if (!mazeFile) return;
+      
+      try {
+        const response = await fetch(mazeFile);
+        const mazeMap = await response.json();
+        drawMaze(canvas, mazeMap);
+      } catch (error) {
+        console.error('Error loading maze:', error);
       }
-    };
-    document.body.appendChild(btn);
+    });
+    
+    // Auto-select the first maze
+    mazeSelect.value = 'mazes/grid.json';
+    mazeSelect.dispatchEvent(new Event('change'));
   </script>
 </body>
 </html>
