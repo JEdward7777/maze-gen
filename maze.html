@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maze Renderer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    canvas {
+      display: block;
+      border: 2px solid #333;
+      background: white;
+      margin: 20px auto;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-family: Arial, sans-serif;
+    }
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      h1 {
+        display: none;
+      }
+      canvas {
+        border: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Maze Renderer</h1>
+  <canvas id="mazeCanvas"></canvas>
+
+  <script>
+    // === CONFIGURABLE CONSTANTS ===
+    const WALL_COLOR = '#000000';  // Default black
+    const WALL_THICKNESS = 2;       // Default thickness
+    const BACKGROUND_COLOR = '#ffffff';
+    const CELL_PADDING = 0;
+    const START_COLOR = '#00ff00';
+    const END_COLOR = '#ff0000';
+    const OPENING_INDICATOR_COLOR = '#888888';
+
+    /**
+     * Draws a maze on a canvas
+     * @param {HTMLCanvasElement} canvas - The canvas element to draw on
+     * @param {Object} mazeMap - The maze configuration
+     *   - width: number of cells wide
+     *   - height: number of cells tall
+     *   - cells: object with keys "x,y" = true for valid cells
+     *   - links: object with keys "x1,y1-x2,y2" = true for connections (no wall)
+     *   - start: string "x,y" for start position
+     *   - end: string "x,y" for end position
+     */
+    function drawMaze(canvas, mazeMap) {
+      const width = mazeMap.width;
+      const height = mazeMap.height;
+      const cells = mazeMap.cells;
+      const links = mazeMap.links;
+      const start = mazeMap.start;
+      const end = mazeMap.end;
+
+      // Calculate cell size to fit canvas width with padding
+      const canvasWidth = window.innerWidth - 40; // Account for body padding
+      const canvasHeight = window.innerHeight - 80; // Account for header and padding
+      
+      const maxCellWidth = Math.floor(canvasWidth / width);
+      const maxCellHeight = Math.floor(canvasHeight / height);
+      const cellSize = Math.min(maxCellWidth, maxCellHeight);
+
+      // Set canvas size
+      canvas.width = cellSize * width;
+      canvas.height = cellSize * height;
+
+      const ctx = canvas.getContext('2d');
+
+      // Fill background
+      ctx.fillStyle = BACKGROUND_COLOR;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Helper to parse coordinate string
+      const parseCoord = (str) => {
+        const [x, y] = str.split(',').map(Number);
+        return { x, y };
+      };
+
+      // Helper to create coordinate key
+      const coordKey = (x, y) => `${x},${y}`;
+
+      // Helper to create link key (always smaller coordinate first for consistency)
+      const linkKey = (x1, y1, x2, y2) => {
+        const k1 = coordKey(x1, y1);
+        const k2 = coordKey(x2, y2);
+        return k1 < k2 ? `${k1}-${k2}` : `${k2}-${k1}`;
+      };
+
+      // Helper to check if there's a link between two cells
+      const hasLink = (x1, y1, x2, y2) => {
+        return !!links[linkKey(x1, y1, x2, y2)];
+      };
+
+      // Draw each cell
+      ctx.strokeStyle = WALL_COLOR;
+      ctx.lineWidth = WALL_THICKNESS;
+      ctx.lineCap = 'square';
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const key = coordKey(x, y);
+          
+          // Skip cells that don't exist
+          if (!cells[key]) continue;
+
+          const px = x * cellSize;
+          const py = y * cellSize;
+
+          // Check and draw each wall
+          // Top wall (to y-1)
+          if (y === 0 || !cells[coordKey(x, y - 1)] || !hasLink(x, y, x, y - 1)) {
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px + cellSize, py);
+            ctx.stroke();
+          }
+
+          // Right wall (to x+1)
+          if (x === width - 1 || !cells[coordKey(x + 1, y)] || !hasLink(x, y, x + 1, y)) {
+            ctx.beginPath();
+            ctx.moveTo(px + cellSize, py);
+            ctx.lineTo(px + cellSize, py + cellSize);
+            ctx.stroke();
+          }
+
+          // Bottom wall (to y+1)
+          if (y === height - 1 || !cells[coordKey(x, y + 1)] || !hasLink(x, y, x, y + 1)) {
+            ctx.beginPath();
+            ctx.moveTo(px, py + cellSize);
+            ctx.lineTo(px + cellSize, py + cellSize);
+            ctx.stroke();
+          }
+
+          // Left wall (to x-1)
+          if (x === 0 || !cells[coordKey(x - 1, y)] || !hasLink(x, y, x - 1, y)) {
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px, py + cellSize);
+            ctx.stroke();
+          }
+
+          // Draw start marker (if this is the start cell)
+          if (start && key === start) {
+            ctx.fillStyle = START_COLOR;
+            ctx.globalAlpha = 0.3;
+            ctx.fillRect(px + CELL_PADDING, py + CELL_PADDING, cellSize - 2 * CELL_PADDING, cellSize - 2 * CELL_PADDING);
+            ctx.globalAlpha = 1.0;
+          }
+
+          // Draw end marker (if this is the end cell)
+          if (end && key === end) {
+            ctx.fillStyle = END_COLOR;
+            ctx.globalAlpha = 0.3;
+            ctx.fillRect(px + CELL_PADDING, py + CELL_PADDING, cellSize - 2 * CELL_PADDING, cellSize - 2 * CELL_PADDING);
+            ctx.globalAlpha = 1.0;
+          }
+        }
+      }
+
+      // Validate links - warn about links to non-existent cells
+      for (const linkStr of Object.keys(links)) {
+        const parts = linkStr.split('-');
+        if (parts.length !== 2) continue;
+        
+        const [x1, y1] = parseCoord(parts[0]);
+        const [x2, y2] = parseCoord(parts[1]);
+        
+        const cell1Exists = cells[parts[0]];
+        const cell2Exists = cells[parts[1]];
+        
+        if (!cell1Exists || !cell2Exists) {
+          console.warn(`Invalid link: ${linkStr} - one or both cells don't exist (cell1: ${cell1Exists}, cell2: ${cell2Exists})`);
+        }
+      }
+    }
+
+    // Example maze - simple 3x3 grid with walls (no links = all walls drawn)
+    const sampleMaze = {
+      width: 3,
+      height: 3,
+      cells: {
+        "0,0": true,
+        "0,1": true,
+        "0,2": true,
+        "1,0": true,
+        "1,1": true,
+        "1,2": true,
+        "2,0": true,
+        "2,1": true,
+        "2,2": true
+      },
+      links: {
+        // Some connections to show maze paths (no wall between linked cells)
+        "0,0-1,0": true,
+        "1,1-1,2": true,
+        "2,0-2,1": true,
+        "1,2-2,2": true
+      },
+      start: "0,0",
+      end: "2,2"
+    };
+
+    // Another example - plus sign maze
+    const plusMaze = {
+      width: 5,
+      height: 5,
+      cells: {
+        "2,0": true,
+        "2,1": true,
+        "0,2": true, "1,2": true, "2,2": true, "3,2": true, "4,2": true,
+        "2,3": true,
+        "2,4": true
+      },
+      links: {
+        "2,0-2,1": true,
+        "2,1-2,2": true,
+        "0,2-1,2": true,
+        "1,2-2,2": true,
+        "2,2-3,2": true,
+        "3,2-4,2": true,
+        "2,2-2,3": true,
+        "2,3-2,4": true
+      },
+      start: "0,2",
+      end: "4,2"
+    };
+
+    // Draw the sample maze
+    const canvas = document.getElementById('mazeCanvas');
+    drawMaze(canvas, sampleMaze);
+    
+    // Log debug info
+    console.log('Canvas width:', canvas.width);
+    console.log('Canvas height:', canvas.height);
+    
+    // Add a button to switch between mazes
+    const btn = document.createElement('button');
+    btn.textContent = 'Switch to Plus Maze';
+    btn.style.cssText = 'display: block; margin: 20px auto; padding: 10px 20px; font-size: 16px; cursor: pointer;';
+    btn.onclick = function() {
+      if (btn.textContent === 'Switch to Plus Maze') {
+        drawMaze(canvas, plusMaze);
+        btn.textContent = 'Switch to Grid Maze';
+      } else {
+        drawMaze(canvas, sampleMaze);
+        btn.textContent = 'Switch to Plus Maze';
+      }
+    };
+    document.body.appendChild(btn);
+  </script>
+</body>
+</html>
