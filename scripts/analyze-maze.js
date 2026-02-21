@@ -16,66 +16,43 @@ const path = require('path');
 function analyzeMaze(mazePath) {
   const maze = JSON.parse(fs.readFileSync(mazePath, 'utf8'));
 
-  // Build adjacency list from links
-  const adjacency = new Map();
+  const leader = {};
 
-  // Initialize all cells
-  const cells = Object.keys(maze.cells);
-  cells.forEach(cell => {
-    if (!adjacency.has(cell)) {
-      adjacency.set(cell, new Set());
-    }
-  });
+  const get_leader = (cell) => {
+    if (leader[cell] === undefined) return cell;
+    if (leader[cell] == cell) return cell;
+    leader[cell] = get_leader(leader[cell]);
+    return leader[cell];
+  }
 
-  // Add edges from links (bidirectional)
+
+  const connect_cells = (cellA, cellB) => {
+    leader[get_leader(cellA)] = get_leader(cellB);
+  }
+
+
+
+      // Add edges from links (bidirectional)
   Object.keys(maze.links).forEach(link => {
     const [cell1, cell2] = link.split('-');
-    if (adjacency.has(cell1) && adjacency.has(cell2)) {
-      adjacency.get(cell1).add(cell2);
-      adjacency.get(cell2).add(cell1);
-    }
+    connect_cells(cell1, cell2);
   });
 
-  // Find connected components using BFS
-  const visited = new Set();
-  const spaces = [];
+  //make groups a dictionary of leader to array.
+  const dict_groups = {};
 
-  cells.forEach(startCell => {
-    if (visited.has(startCell)) return;
-    
-    // BFS from this cell
-    const component = [];
-    const queue = [startCell];
-    visited.add(startCell);
-    
-    while (queue.length > 0) {
-      const current = queue.shift();
-      component.push(current);
-      
-      const neighbors = adjacency.get(current) || new Set();
-      neighbors.forEach(neighbor => {
-        if (!visited.has(neighbor)) {
-          visited.add(neighbor);
-          queue.push(neighbor);
-        }
-      });
+  //now make sure all the cells have been touched even if they are not connected.
+  Object.keys(maze.cells).forEach(cell => {
+    const cell_leader = get_leader(cell);
+    if (!dict_groups[cell_leader]) {
+      dict_groups[cell_leader] = [];
     }
-    
-    spaces.push({
-      cells: component,
-      area: component.length
-    });
+    dict_groups[cell_leader].push(cell);
   });
 
   // Return result
   return {
-    maze: path.basename(mazePath),
-    totalSpaces: spaces.length,
-    spaces: spaces.map((space, index) => ({
-      id: index + 1,
-      area: space.area,
-      cells: space.cells
-    }))
+    groups: Object.values(dict_groups)
   };
 }
 
