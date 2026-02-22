@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { analyzeMaze } = require('./analyze-maze');
+const { analyzeMaze, solveMaze } = require('./analyze-maze');
 const { Random } = require('./random');
 
 /**
@@ -155,4 +155,39 @@ if (require.main === module) {
   console.log(`Maze saved to: ${resolvedPath}`);
 }
 
-module.exports = { generateRandomMaze, addLink };
+/**
+ * Generate a maze optimized for maximum path length from start to end
+ * @param {object} options - Options object
+ * @param {number} options.width - Number of columns
+ * @param {number} options.height - Number of rows
+ * @param {number} [options.iterations=100] - Number of iterations per seed optimization
+ * @param {number} [options.divisions=10] - Number of divisions for outer loop stepping
+ * @param {boolean} [options.talk=false] - Whether to print progress messages
+ * @returns {object} Result with best maze, length, and seedPacket
+ */
+function generateLongMaze({ width, height, iterations = 100, divisions = 10, talk = false }) {
+  const seedPacketLength = width * height;
+  let seedPacket = Array.from({ length: seedPacketLength }, () => Math.floor(Math.random() * 1000000));
+  let bestSeedPacket = [...seedPacket];
+  let bestLength = 0;
+  let bestMaze = null;
+
+  const step = Math.round(seedPacketLength / divisions);
+  for (let i = 0; i < seedPacketLength; i += step) {
+    for (let iter = 0; iter < iterations; iter++) {
+      seedPacket[i]++;
+      const result = generateRandomMaze({ width, height, seedPacket: [...seedPacket], talk });
+      const maze = result.maze;
+      const solution = solveMaze(maze);
+      if (solution.solved && solution.length > bestLength) {
+        bestLength = solution.length;
+        bestMaze = JSON.parse(JSON.stringify(maze)); // deep copy
+        bestSeedPacket = [...seedPacket];
+      }
+    }
+  }
+
+  return { maze: bestMaze, length: bestLength, seedPacket: bestSeedPacket };
+}
+
+module.exports = { generateRandomMaze, addLink, generateLongMaze };
