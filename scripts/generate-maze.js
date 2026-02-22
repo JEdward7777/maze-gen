@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { analyzeMaze } = require('./analyze-maze');
+const { Random } = require('./random');
 
 /**
  * Add a single link to the maze
@@ -28,9 +29,10 @@ function addLink(maze, cellA, cellB) {
  * @param {object} [options.initialMaze] - Starting maze to build upon (optional)
  * @param {boolean} [options.talk=false] - Whether to print progress messages
  * @param {number} [options.maxIterations=Infinity] - Maximum iterations to run
+ * @param {number[]} [options.seedPacket] - Array of seeds; one popped per loop iteration to reseed RNG
  * @returns {object} Maze object (may not be fully connected if maxIterations reached)
  */
-function generateRandomMaze({ width, height, initialMaze, talk = false, maxIterations = Infinity }) {
+function generateRandomMaze({ width, height, initialMaze, talk = false, maxIterations = Infinity, seedPacket }) {
 
   // Use provided maze or create new one
   let maze;
@@ -65,10 +67,21 @@ function generateRandomMaze({ width, height, initialMaze, talk = false, maxItera
   let lastPrint = 0;
   let iterations = 0;
 
+  // Initialize seed queue and RNG
+  let seedQueue = seedPacket ? [...seedPacket] : [];
+  let rng = () => Math.random();
+
   // Iteratively add links until maze is connected or max iterations reached
   while (analysis.boundaries.length > 0 && iterations < maxIterations) {
+    // Reseed RNG if seed packet has elements
+    if (seedQueue.length > 0) {
+      const seed = seedQueue.pop();
+      const randomInstance = new Random(seed);
+      rng = () => randomInstance.random();
+    }
+
     // Pick a random boundary from the analysis
-    const randomIndex = Math.floor(Math.random() * analysis.boundaries.length);
+    const randomIndex = Math.floor(rng() * analysis.boundaries.length);
     const boundary = analysis.boundaries[randomIndex];
 
     // Parse the boundary (format: "cellA-cellB")
