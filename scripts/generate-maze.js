@@ -22,29 +22,54 @@ function addLink(maze, cellA, cellB) {
 
 /**
  * Generate a random maze of given dimensions
- * @param {number} width - Number of columns
- * @param {number} height - Number of rows
- * @param {object} options - Options object
+ * @param {number|object} widthOrMaze - Number of columns OR an existing maze to continue
+ * @param {number|object} heightOrOptions - Number of rows OR options object
+ * @param {object} options - Options object (if first param is number)
+ * @param {object} options.initialMaze - Starting maze to build upon (optional)
  * @param {boolean} options.talk - Whether to print progress messages
- * @returns {object} Complete maze object
+ * @param {number} options.maxIterations - Maximum iterations to run (default: unlimited)
+ * @returns {object} Maze object (may not be fully connected if maxIterations reached)
  */
-function generateRandomMaze(width, height, options = {}) {
-  const { talk = false } = options;
+function generateRandomMaze(widthOrMaze, heightOrOptions, options = {}) {
+  let width, height, initialMaze;
   
-  // Initialize maze with all cells and no links
-  const maze = {
-    width,
-    height,
-    cells: {},
-    links: {},
-    start: "0,0",
-    end: `${width - 1},${height - 1}`
-  };
+  // Determine if first arg is a maze object or number
+  if (typeof widthOrMaze === 'object' && widthOrMaze !== null) {
+    // Called as generateRandomMaze(existingMaze, options)
+    initialMaze = widthOrMaze;
+    options = heightOrOptions || {};
+  } else {
+    // Called as generateRandomMaze(width, height, options)
+    width = widthOrMaze;
+    height = heightOrOptions;
+    options = options || {};
+  }
   
-  // Create all cells
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      maze.cells[`${x},${y}`] = true;
+  const { talk = false, maxIterations = Infinity } = options;
+  
+  // Use provided maze or create new one
+  let maze;
+  if (initialMaze) {
+    // Deep copy the initial maze to avoid mutating the original
+    maze = JSON.parse(JSON.stringify(initialMaze));
+    width = maze.width;
+    height = maze.height;
+  } else {
+    // Initialize maze with all cells and no links
+    maze = {
+      width,
+      height,
+      cells: {},
+      links: {},
+      start: "0,0",
+      end: `${width - 1},${height - 1}`
+    };
+    
+    // Create all cells
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        maze.cells[`${x},${y}`] = true;
+      }
     }
   }
   
@@ -53,9 +78,10 @@ function generateRandomMaze(width, height, options = {}) {
   const totalBoundaries = analysis.boundaries.length;
   const startTime = Date.now();
   let lastPrint = 0;
+  let iterations = 0;
   
-  // Iteratively add links until maze is connected
-  while (analysis.boundaries.length > 0) {
+  // Iteratively add links until maze is connected or max iterations reached
+  while (analysis.boundaries.length > 0 && iterations < maxIterations) {
     // Pick a random boundary from the analysis
     const randomIndex = Math.floor(Math.random() * analysis.boundaries.length);
     const boundary = analysis.boundaries[randomIndex];
@@ -65,6 +91,7 @@ function generateRandomMaze(width, height, options = {}) {
     
     // Add the link
     addLink(maze, cellA, cellB);
+    iterations++;
     
     // Re-analyze
     analysis = analyzeMaze(maze);
@@ -86,7 +113,11 @@ function generateRandomMaze(width, height, options = {}) {
     }
   }
   
-  return maze;
+  return {
+    maze,
+    completed: analysis.boundaries.length === 0,
+    iterations
+  };
 }
 
 // Run if executed directly
@@ -109,7 +140,8 @@ if (require.main === module) {
   }
   
   // Generate the maze
-  const maze = generateRandomMaze(width, height, { talk: true });
+  const result = generateRandomMaze(width, height, { talk: true });
+  const maze = result.maze;
   
   // Resolve output path
   const resolvedPath = path.resolve(outputPath);
