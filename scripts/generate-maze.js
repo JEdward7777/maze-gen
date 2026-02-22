@@ -75,7 +75,7 @@ function generateRandomMaze({ width, height, initialMaze, talk = false, maxItera
   while (analysis.boundaries.length > 0 && iterations < maxIterations) {
     // Reseed RNG if seed packet has elements
     if (seedQueue.length > 0) {
-      const seed = seedQueue.pop();
+      const seed = seedQueue.shift();
       const randomInstance = new Random(seed);
       rng = () => randomInstance.random();
     }
@@ -142,10 +142,13 @@ function generateLongMaze({ width, height, iterations = 100, divisions = 10, tal
     if( i != lastI ){
       seedPacket = [...bestSeedPacket];
       lastI = i;
+      if( talk ){
+        console.log(`Iterating index ${i} of ${seedPacketLength}...`);
+      }
     }
     for (let iter = 0; iter < iterations; iter++) {
       seedPacket[i]++;
-      const result = generateRandomMaze({ width, height, seedPacket: [...seedPacket], talk });
+      const result = generateRandomMaze({ width, height, seedPacket: [...seedPacket] });
       const maze = result.maze;
       const solution = solveMaze(maze);
       if (solution.solved && solution.length > bestLength) {
@@ -159,20 +162,48 @@ function generateLongMaze({ width, height, iterations = 100, divisions = 10, tal
     }
   }
 
+  //print final results
+  if( talk ){
+    console.log(`Best length: ${bestLength}`);
+    console.log(`Best seed packet: ${JSON.stringify(bestSeedPacket)}`);
+  }
+
   return { maze: bestMaze, length: bestLength, seedPacket: bestSeedPacket };
 }
 
 // Run if executed directly
 if (require.main === module) {
-  const args = process.argv.slice(2);
+  const rawArgs = process.argv.slice(2);
 
-  if (args.length < 3) {
-    console.error('Usage: node scripts/generate-maze.js <width> <height> <output-file>');
+  // Parse flags and positional args
+  const positional = [];
+  let useLongMaze = false;
+  let iterations = 100;
+  let divisions = 10;
+
+  for (let i = 0; i < rawArgs.length; i++) {
+    const arg = rawArgs[i];
+    if (arg === '--long') {
+      useLongMaze = true;
+    } else if (arg === '--iterations') {
+      useLongMaze = true;
+      iterations = parseInt(rawArgs[++i], 10);
+    } else if (arg === '--divisions') {
+      useLongMaze = true;
+      divisions = parseInt(rawArgs[++i], 10);
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  if (positional.length < 3) {
+    console.error('Usage: node scripts/generate-maze.js <width> <height> <output-file> [--long] [--iterations N] [--divisions N]');
     console.error('Example: node scripts/generate-maze.js 10 10 mazes/random-10x10.json');
+    console.error('Long maze: node scripts/generate-maze.js 10 10 mazes/long-maze.json --long --iterations 50 --divisions 5');
     process.exit(1);
   }
 
-  const [widthStr, heightStr, outputPath] = args;
+  const [widthStr, heightStr, outputPath] = positional;
   const width = parseInt(widthStr, 10);
   const height = parseInt(heightStr, 10);
 
@@ -182,8 +213,14 @@ if (require.main === module) {
   }
 
   // Generate the maze
-  const result = generateRandomMaze({ width, height, talk: true });
-  const maze = result.maze;
+  let maze;
+  if (useLongMaze) {
+    const result = generateLongMaze({ width, height, iterations, divisions, talk: true });
+    maze = result.maze;
+  } else {
+    const result = generateRandomMaze({ width, height, talk: true });
+    maze = result.maze;
+  }
 
   // Resolve output path
   const resolvedPath = path.resolve(outputPath);
